@@ -14,8 +14,8 @@ router = APIRouter(
 @router.get("/", response_model=List[schemas.PostOut])
 def get_post(db: Session = Depends(get_db), limit: int= 10, skip: int=0, search: Optional[str]=""):
 
-    posts=db.query(models.Post).filter(
-        models.Post.title.contains(search)).limit(limit).offset(skip).all()
+    """posts=db.query(models.Post).filter(
+        models.Post.title.contains(search)).limit(limit).offset(skip).all()"""
     
     results=db.query(models.Post,func.count(
         models.Vote.post_id).label("votes")).join(
@@ -32,10 +32,13 @@ def create_posts(post: schemas.PostCreate,db: Session = Depends(get_db), current
     db.refresh(new_post)
     return new_post
 
-@router.get("/{id}", response_model=schemas.PostBase)
+@router.get("/{id}", response_model=schemas.PostOut)
 def get_posts(id: int, response: Response, db: Session = Depends(get_db)):
-   
-    post=db.query(models.Post).filter(models.Post.id==id).first()
+
+    
+    post=db.query(models.Post,func.count(
+        models.Vote.post_id).label("votes")).join(
+            models.Vote,models.Vote.post_id==models.Post.id,isouter=True).group_by(models.Post.id).filter(models.Post.id==id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Post with id {id} not found")
     return post
